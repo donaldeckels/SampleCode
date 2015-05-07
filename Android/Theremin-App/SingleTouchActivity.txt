@@ -1,0 +1,30 @@
+package edu.ucla.tanms.tanmstheremin;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.Window;
+import android.view.WindowManager;
+
+public class SingleTouchActivity extends Activity {
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        //set activity as fullscreen
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        //start activity view
+        setContentView(new SingleTouchEventView(this, null));
+
+    }
+
+    @Override
+    protected void onStop(){
+        super.onStop();
+        MyActivity.setVolume(0);
+    }
+
+}

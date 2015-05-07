@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">TANMS Theremin</string>
+    <string name="oneProx">One Finger and Light Sensor</string>
+    <string name="two">Two Fingers</string>
+    <string name="one">One Finger</string>
+
+</resources>

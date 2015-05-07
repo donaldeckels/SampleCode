@@ -1,0 +1,100 @@
+package edu.ucla.tanms.tanmstheremin;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+
+public class SingleTouchEventView extends View {
+    private Paint mPaint, tPaint;
+    private Path mPath;
+
+    float eventX, eventY;
+    int maxX, maxY, txtSize, circSize, circWid, txtSpace;
+
+    private float freq, volume;
+
+    public SingleTouchEventView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+
+        //initialize variables
+        maxX = MyActivity.getMaxX();
+        maxY = MyActivity.getMaxY();
+        eventY = maxY;
+        txtSize = (maxY/15);
+        txtSpace = (maxY/18);
+        circWid = (maxY/65);
+        circSize = (maxY/12);
+
+        //initialize paint parameters
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPaint.setStrokeWidth(circWid);
+        mPaint.setColor(Color.GREEN);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);
+
+        mPath = new Path();
+        tPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tPaint.setColor(Color.RED);
+        tPaint.setTextSize(txtSize);
+
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        //calculate frequency and volume
+        freq = (1125f + ((eventX-((float)maxX/2f))/((float)maxX/2f))*875f);
+        volume = (1-(eventY/(float)maxY));
+
+        //set the values in the main activity
+        MyActivity.setVolume((double)volume);
+        MyActivity.setFreq((double)freq);
+
+        //draw items on the canvas
+        canvas.drawPath(mPath, mPaint);
+        canvas.drawText("X: " + Float.toString(eventX), 0, txtSpace, tPaint);
+        canvas.drawText("Y: " + Float.toString(eventY), 0, (txtSpace*2), tPaint);
+        canvas.drawText("Freq: " + Integer.toString((int)freq) + "Hz", 0, (txtSpace*3), tPaint);
+        canvas.drawText("Vol: " + Integer.toString((int)(volume*100f)) + "%", 0, (txtSpace*4), tPaint);
+        canvas.drawText("Y = volume, X = frequency", 0, (txtSpace*5),tPaint);
+
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                //get touch locaitoni
+                eventX = event.getX();
+                eventY = event.getY();
+                mPath.addCircle(eventX, eventY, circSize, Path.Direction.CW);
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                //get new touch location
+                eventX = event.getX();
+                eventY = event.getY();
+                //move the circle
+                mPath.reset();
+                mPath.addCircle(eventX, eventY, circSize, Path.Direction.CW);
+                break;
+            case MotionEvent.ACTION_UP:
+                //move the point to a default location
+                eventY = maxY;
+                eventX = ((float)maxX/2f);
+                //clear the circle
+                mPath.reset();
+                break;
+            default:
+                return false;
+        }
+
+        // Schedules a repaint.
+        invalidate();
+        return true;
+    }
+}

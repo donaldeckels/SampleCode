@@ -1,0 +1,118 @@
+package edu.ucla.tanms.tanmstheremin;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+
+public class SingleTouchPlusEventView extends View {
+    //variables
+    private Paint mPaint, tPaint;
+    private Path mPath;
+
+    float eventLux, eventX, eventY;
+    int maxX, maxY, txtSize, circSize, circWid, txtSpace;
+
+    private float freq, maxLux, volume;
+
+
+    public SingleTouchPlusEventView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        //initialize variables
+        maxX = MyActivity.getMaxX();
+        maxY = MyActivity.getMaxY();
+        eventY = maxY+1;
+        txtSize = (maxY/15);
+        txtSpace = (maxY/18);
+        circWid = (maxY/65);
+        circSize = (maxY/12);
+        eventLux = 0f;
+        maxLux = SingleTouchPlusActivity.getLux();
+
+        //initialize paint variables
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPaint.setStrokeWidth(circWid);
+        mPaint.setColor(Color.GREEN);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);
+        mPath = new Path();
+
+        tPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tPaint.setColor(Color.RED);
+        tPaint.setTextSize(txtSize);
+
+
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        //get light value
+        eventLux = SingleTouchPlusActivity.getLux();
+        //sets the relative maximum value, since a sensor max can be too high for the current environment
+        if(eventLux > maxLux){ maxLux = eventLux; }
+        //catch to make sure that there is no sound if there is no touch
+        if(eventY > maxY){
+            volume = 0;
+        }
+        //calculate volume and frequency
+        else {
+            volume = eventLux / maxLux;
+        }
+        if(volume > 1){volume = 1;}
+        freq = (1125f - ((eventY-((float)maxY/2f))/((float)maxY/2f))*875f);
+
+        MyActivity.setVolume((double)volume);
+        MyActivity.setFreq((double)freq);
+
+        //draw the canvas
+        canvas.drawPath(mPath, mPaint);
+        canvas.drawText("X: " + Float.toString(eventX), 0, (txtSpace*1), tPaint);
+        canvas.drawText("Y: " + Float.toString(eventY), 0, (txtSpace*2), tPaint);
+        canvas.drawText("Lux: " + Float.toString(eventLux) + "lx", 0, (txtSpace*3), tPaint);
+        canvas.drawText("maxLux: " + Float.toString(maxLux) + "lx", 0, (txtSpace*4), tPaint);
+        canvas.drawText("Freq: " + Integer.toString((int)freq) + "Hz", 0, (txtSpace*5), tPaint);
+        canvas.drawText("Vol: " + Integer.toString((int)(volume*100f)) + "%", 0, (txtSpace*6), tPaint);
+        canvas.drawText("Lux = volume, Y = frequency", 0, (txtSpace*7), tPaint);
+        invalidate();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                //get touch location
+                eventX = event.getX();
+                eventY = event.getY();
+                //place circle at location
+                mPath.addCircle(eventX, eventY, circSize, Path.Direction.CW);
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                //get new touch location
+                eventX = event.getX();
+                eventY = event.getY();
+                //move circle to new location
+                mPath.reset();
+                mPath.addCircle(eventX, eventY, circSize, Path.Direction.CW);
+                break;
+            case MotionEvent.ACTION_UP:
+                //move point to default location
+                eventY = (maxY + 1);
+                eventX = ((float)maxX/2f);
+                //clear the cicle
+                mPath.reset();
+                break;
+            default:
+                return false;
+        }
+
+        // Schedules a repaint.
+        invalidate();
+        return true;
+    }
+
+}

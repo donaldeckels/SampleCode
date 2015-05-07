@@ -1,0 +1,166 @@
+package edu.ucla.tanms.tanmstheremin;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PointF;
+import android.util.AttributeSet;
+import android.util.SparseArray;
+import android.view.MotionEvent;
+import android.view.View;
+
+public class DualTouchEventView extends View {
+
+    //variables
+    private SparseArray<PointF> mActivePointers;
+    private Paint mPaint, tPaint;
+    private int[] colors = { Color.GREEN, Color.BLUE };
+
+    private int maxX, maxY, txtSize, circSize, circWid, txtSpace;
+    private float x1, y1, x2, y2, freq, volume;
+
+
+
+    public DualTouchEventView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        //initialize variables
+        maxX = MyActivity.getMaxX();    //get max values
+        maxY = MyActivity.getMaxY();
+        txtSize = (maxY/15);            //scale display
+        txtSpace = (maxY/18);
+        circWid = (maxY/65);
+        circSize = (maxY/12);
+        x1 = y1 = 0f;                   //start both points at nothing
+        x2 = y2 = 0f;
+
+        //initialize paint parameters
+        mActivePointers = new SparseArray<PointF>();    //format paint displays
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPaint.setStrokeWidth(circWid);
+        mPaint.setColor(Color.GREEN);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);
+        tPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tPaint.setColor(Color.RED);
+        tPaint.setTextSize(txtSize);
+
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        int size = mActivePointers.size();
+
+        // draw circles for each point
+        for (int i = 0; i < size; i++) {
+            PointF point = mActivePointers.valueAt(i);
+            if (point != null) {
+                if (i < 2) {
+                    mPaint.setColor(colors[i]);
+                } else {
+                    //since we only care about the first two, all others are invisible
+                    mPaint.setColor(Color.TRANSPARENT);
+                }
+                canvas.drawCircle(point.x, point.y, circSize, mPaint);
+            }
+        }
+        //if there is only one point, it'll be the "first" point, which controls frequency
+        if(size > 0) {
+            PointF point = mActivePointers.valueAt(0);
+            x1 = point.x;
+            y1 = point.y;
+        }
+        //otherwise move to default location
+        else{
+            x1 = 0;
+            y1 = ((float)maxY/2f);
+        }
+        //if there are two points, then the leftmost will be the "second", which controls volume
+        //and the other is "first", which controls frequency
+        if(size>1) {
+            PointF point = mActivePointers.valueAt(0);
+            PointF point2 = mActivePointers.valueAt(1);
+            if(point.x <= point2.x) {
+                x1 = point2.x;
+                y1 = point2.y;
+                x2 = point.x;
+                y2 = point.y;
+            }
+            else{
+                x1 = point.x;
+                y1 = point.y;
+                x2 = point2.x;
+                y2 = point2.y;
+            }
+        }
+        //otherwise move to default location
+        else{
+            x2 = 0;
+            y2 = maxY;
+        }
+
+        //calculate volume and frequency
+        volume = (1-(y2/(float)maxY));
+        freq = (1125f - ((y1-((float)maxY/2f))/((float)maxY/2f))*875f);
+        //send to main activity for the audio settings
+        MyActivity.setVolume (volume);
+        MyActivity.setFreq(freq);
+        //draw text
+        canvas.drawText("X2: " + x2, 0, (txtSpace * 1), tPaint);
+        canvas.drawText("Y2: " + y2, 0, (txtSpace * 2), tPaint);
+        canvas.drawText("Volume: " + Integer.toString((int)(volume*100f)) + "%", 0, (txtSpace * 3), tPaint);
+        canvas.drawText("Left point = volume", 0, (txtSpace * 4), tPaint);
+        canvas.drawText("X1: " + x1, (maxX/2), (txtSpace * 1), tPaint);
+        canvas.drawText("Y1: "+ y1, (maxX/2), (txtSpace * 2), tPaint);
+        canvas.drawText("Freq: " + Integer.toString((int)freq) + "Hz", (maxX/2), (txtSpace * 3), tPaint);
+        canvas.drawText("Right = frequency", (maxX/2), (txtSpace * 4), tPaint);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+
+        // get pointer index from the event object
+        int pointerIndex = event.getActionIndex();
+
+        // get pointer ID
+        int pointerId = event.getPointerId(pointerIndex);
+
+        // get masked (not specific to a pointer) action
+        int maskedAction = event.getActionMasked();
+
+        switch (maskedAction) {
+
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN: {
+                // We have a new pointer. Lets add it to the list of pointers
+
+                PointF f = new PointF();
+                f.x = event.getX(pointerIndex);
+                f.y = event.getY(pointerIndex);
+                mActivePointers.put(pointerId, f);
+                break;
+            }
+            case MotionEvent.ACTION_MOVE: { // a pointer was moved
+                for (int size = event.getPointerCount(), i = 0; i < size; i++) {
+                    PointF point = mActivePointers.get(event.getPointerId(i));
+                    if (point != null) {
+                        point.x = event.getX(i);
+                        point.y = event.getY(i);
+                    }
+                }
+                break;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_CANCEL: {
+                mActivePointers.remove(pointerId);
+                break;
+            }
+        }
+        invalidate();
+
+        return true;
+    }
+}
